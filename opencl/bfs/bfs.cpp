@@ -87,15 +87,16 @@ throw(std::string)
 {
 
     //int number_elements = height*width;
-    char h_over;
+    int h_over;
     cl_mem d_graph_nodes, d_graph_edges, d_graph_mask, d_updating_graph_mask, \
     d_graph_visited, d_cost, d_over;
     try {
 #ifdef  TIMING
         gettimeofday(&tv_total_start, NULL);
 #endif
-
+        // printf("_clInit\n");
         _clInit();
+        // printf("_clInit done\n");
 
 #ifdef  TIMING
         gettimeofday(&tv_mem_alloc_start, NULL);
@@ -103,6 +104,7 @@ throw(std::string)
         init_time = tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
 #endif
 
+        // printf("_clMalloc Calls\n");
         //--1 transfer data from host to device
         d_graph_nodes = _clMalloc(no_of_nodes*sizeof(Node), h_graph_nodes);
         d_graph_edges = _clMalloc(edge_list_size*sizeof(int), h_graph_edges);
@@ -112,6 +114,7 @@ throw(std::string)
 
         d_cost = _clMallocRW(no_of_nodes*sizeof(int), h_cost);
         d_over = _clMallocRW(sizeof(int), &h_over);
+        // printf("_clMalloc Done\n");
 
 #ifdef  TIMING
         gettimeofday(&tv_mem_alloc_end, NULL);
@@ -119,12 +122,14 @@ throw(std::string)
         mem_alloc_time = tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;
 #endif
 
+        // printf("_clMemcpyH2D\n");
         _clMemcpyH2D(d_graph_nodes, no_of_nodes*sizeof(Node), h_graph_nodes);
         _clMemcpyH2D(d_graph_edges, edge_list_size*sizeof(int), h_graph_edges);
         _clMemcpyH2D(d_graph_mask, no_of_nodes*sizeof(int), h_graph_mask);
         _clMemcpyH2D(d_updating_graph_mask, no_of_nodes*sizeof(int), h_updating_graph_mask);
         _clMemcpyH2D(d_graph_visited, no_of_nodes*sizeof(int), h_graph_visited);
-        _clMemcpyH2D(d_cost, no_of_nodes*sizeof(char), h_cost);
+        _clMemcpyH2D(d_cost, no_of_nodes*sizeof(int), h_cost);
+        // printf("_clMemcpyH2D Done\n");
 
         //--2 invoke kernel
 #ifdef	PROFILING
@@ -135,11 +140,14 @@ throw(std::string)
 #endif
         do {
             h_over = false;
-            _clMemcpyH2D(d_over, sizeof(char), &h_over);
+            // printf("copy h_over to device\n");
+            _clMemcpyH2D(d_over, sizeof(int), &h_over);
+            // printf("Done copying h_over to device\n");
 
             //--kernel 0
             int kernel_id = 0;
             int kernel_idx = 0;
+            // printf("_clSetArgs\n");
             _clSetArgs(kernel_id, kernel_idx++, d_graph_nodes);
             _clSetArgs(kernel_id, kernel_idx++, d_graph_edges);
             _clSetArgs(kernel_id, kernel_idx++, d_graph_mask);
@@ -147,23 +155,31 @@ throw(std::string)
             _clSetArgs(kernel_id, kernel_idx++, d_graph_visited);
             _clSetArgs(kernel_id, kernel_idx++, d_cost);
             _clSetArgs(kernel_id, kernel_idx++, &no_of_nodes, sizeof(int));
+            // printf("_clSetArgs Done\n");
 
             //int work_items = no_of_nodes;
+            // printf("_clInvokeKernel 1\n");
             _clInvokeKernel(kernel_id, no_of_nodes, work_group_size);
+            // printf("_clInvokeKernel 1 Done\n");
 
             //--kernel 1
             kernel_id = 1;
             kernel_idx = 0;
+            // printf("_clSetArgs\n");
             _clSetArgs(kernel_id, kernel_idx++, d_graph_mask);
             _clSetArgs(kernel_id, kernel_idx++, d_updating_graph_mask);
             _clSetArgs(kernel_id, kernel_idx++, d_graph_visited);
             _clSetArgs(kernel_id, kernel_idx++, d_over);
             _clSetArgs(kernel_id, kernel_idx++, &no_of_nodes, sizeof(int));
+            // printf("_clSetArgs Done\n");
 
             //work_items = no_of_nodes;
+            // printf("_clInvokeKernel 2\n");
             _clInvokeKernel(kernel_id, no_of_nodes, work_group_size);
+            // printf("_clInvokeKernel 2 Done\n");
 
-            _clMemcpyD2H(d_over,sizeof(char), &h_over);
+            _clMemcpyD2H(d_over,sizeof(int), &h_over);
+            // printf("h_over read back = %d\n", h_over);
         } while(h_over);
 
         _clFinish();

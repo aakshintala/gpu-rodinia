@@ -8,7 +8,7 @@
 //-------------------------------------------------------------------
 template<typename datatype>
 void fill(datatype *A, const int n, const datatype maxi){
-    for (int j = 0; j < n; j++) 
+    for (int j = 0; j < n; j++)
     {
         A[j] = ((datatype) maxi * (rand() / (RAND_MAX + 1.0f)));
     }
@@ -34,11 +34,11 @@ void print_matrix(datatype *A, int height, int width){
 template<typename datatype>
 void verify_array(const datatype *cpuResults, const datatype *gpuResults, const int size){
 
-    char passed = true; 
+    char passed = true;
 #pragma omp parallel for
     for (int i=0; i<size; i++){
       if (fabs(cpuResults[i] - gpuResults[i]) / cpuResults[i] > MAX_RELATIVE_ERROR){
-         passed = false; 
+         passed = false;
       }
     }
     if (passed){
@@ -52,12 +52,14 @@ void verify_array(const datatype *cpuResults, const datatype *gpuResults, const 
 template<typename datatype>
 void compare_results(const datatype *cpu_results, const datatype *gpu_results, const int size){
 
-    char passed = true; 
+    char passed = true;
 //#pragma omp parallel for
     for (int i=0; i<size; i++){
-      if (cpu_results[i]!=gpu_results[i]){
-         passed = false; 
-      }
+        if (cpu_results[i]!=gpu_results[i]){
+            passed = false;
+            cout <<"printing the failing result plus one before and after." <<endl;
+            cout<<i <<" CPU: " <<cpu_results[i] <<" GPU: " <<gpu_results[i] <<endl;
+        }
     }
     if (passed){
         std::cout << "--cambine:passed:-)" << endl;
